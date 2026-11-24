@@ -28,6 +28,11 @@ Si se omite `SECRET_KEY`, se genera una clave aleatoria al iniciar la app y las 
 - Búsqueda de recetas por ingrediente.
 - Contraseñas con hash, consultas parametrizadas y protección CSRF en formularios POST.
 
+## Estructura
+
+- `app.py`: configuración de Flask, rutas, vistas y plantillas.
+- `servicios.py`: creación del esquema, consultas y validación de usuarios y recetas; sus funciones de acceso a datos reciben la conexión SQLite como parámetro.
+
 ## Pruebas
 
 ```powershell
