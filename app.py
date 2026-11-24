@@ -192,7 +192,13 @@ def create_app(test_config=None):
                 for line in request.form.get("ingredients", "").splitlines()
                 if line.strip()
             ]
-            if not title or not description or not instructions or not ingredients:
+            if (
+                not title
+                or len(title) > 500
+                or not description
+                or not instructions
+                or not ingredients
+            ):
                 flash("Completa todos los campos e incluye al menos un ingrediente.", "error")
             else:
                 db = get_db()

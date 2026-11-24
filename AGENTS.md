@@ -40,3 +40,4 @@ Incluye registro, inicio de sesión y gestión básica de recetas.
 - No hacer commit ni push.
 
 ## Lecciones aprendidas
+"Todo campo de texto se valida en el servidor, con longitud mínima y máxima."
