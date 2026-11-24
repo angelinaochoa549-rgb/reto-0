@@ -17,7 +17,6 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-
 BASE_DIR = Path(__file__).resolve().parent
 
 

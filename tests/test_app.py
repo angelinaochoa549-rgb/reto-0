@@ -32,7 +32,7 @@ def test_registration_login_and_recipe_publication(client):
         {"username": "cocinera", "password": "contraseña-segura"},
     )
     assert response.status_code == 200
-    assert "Cuenta creada".encode() in response.data
+    assert b"Cuenta creada" in response.data
 
     response = post_form(
         client,
@@ -45,8 +45,8 @@ def test_registration_login_and_recipe_publication(client):
         },
     )
     assert response.status_code == 200
-    assert "Tostadas frescas".encode() in response.data
-    assert "Aceite de oliva".encode() in response.data
+    assert b"Tostadas frescas" in response.data
+    assert b"Aceite de oliva" in response.data
 
     response = post_form(client, "/cerrar-sesion", {})
     assert response.status_code == 200
