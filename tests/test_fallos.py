@@ -58,3 +58,43 @@ def test_new_recipe_title_over_500_characters_is_not_published(tmp_path):
         ).fetchone()[0]
 
     assert recipes_after == recipes_before
+
+
+def test_registration_rejects_password_over_1000_characters(tmp_path):
+    database = tmp_path / "test.db"
+    app = create_app(
+        {
+            "TESTING": True,
+            "SECRET_KEY": "test-secret",
+            "DATABASE": str(database),
+        }
+    )
+    client = app.test_client()
+    username = f"prueba{secrets.randbelow(1_000_000)}"
+
+    client.get("/")
+    with client.session_transaction() as session:
+        csrf_token = session["csrf_token"]
+
+    with sqlite3.connect(database) as connection:
+        users_before = connection.execute(
+            "SELECT COUNT(*) FROM users"
+        ).fetchone()[0]
+
+    response = client.post(
+        "/registro",
+        data={
+            "username": username,
+            "password": "x" * 1000,
+            "csrf_token": csrf_token,
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    with sqlite3.connect(database) as connection:
+        users_after = connection.execute(
+            "SELECT COUNT(*) FROM users"
+        ).fetchone()[0]
+
+    assert users_after == users_before

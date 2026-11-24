@@ -134,6 +134,8 @@ def create_app(test_config=None):
                 flash("El usuario debe tener entre 3 y 40 caracteres.", "error")
             elif len(password) < 8:
                 flash("La contraseña debe tener al menos 8 caracteres.", "error")
+            elif len(password) > 128:
+                flash("La contraseña no puede tener más de 128 caracteres.", "error")
             else:
                 db = get_db()
                 try:
