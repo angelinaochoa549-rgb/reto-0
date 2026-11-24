@@ -15,7 +15,18 @@ from flask import (
     session,
     url_for,
 )
-from werkzeug.security import check_password_hash, generate_password_hash
+
+from servicios import (
+    authenticate_user,
+    create_recipe,
+    create_user,
+    get_recipe,
+    get_recipe_ingredients,
+    get_recipes,
+    initialize_database,
+    validate_recipe_form,
+    validate_user_form,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -42,35 +53,8 @@ def create_app(test_config=None):
         if db is not None:
             db.close()
 
-    def initialize_database():
-        db = get_db()
-        db.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-                password_hash TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS recipes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL,
-                instructions TEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS ingredients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-                name TEXT NOT NULL
-            );
-            CREATE INDEX IF NOT EXISTS ingredients_name_idx ON ingredients(name);
-            """
-        )
-        db.commit()
-
     with app.app_context():
-        initialize_database()
+        initialize_database(get_db())
 
     @app.before_request
     def protect_post_requests():
@@ -101,54 +85,26 @@ def create_app(test_config=None):
     @app.get("/")
     def index():
         ingredient = request.args.get("ingrediente", "").strip()
-        db = get_db()
-        if ingredient:
-            recipes = db.execute(
-                """
-                SELECT DISTINCT recipes.*, users.username
-                FROM recipes
-                JOIN users ON users.id = recipes.user_id
-                JOIN ingredients ON ingredients.recipe_id = recipes.id
-                WHERE ingredients.name LIKE ? ESCAPE '\\'
-                ORDER BY recipes.created_at DESC
-                """,
-                (f"%{escape_like(ingredient)}%",),
-            ).fetchall()
-        else:
-            recipes = db.execute(
-                """
-                SELECT recipes.*, users.username
-                FROM recipes
-                JOIN users ON users.id = recipes.user_id
-                ORDER BY recipes.created_at DESC
-                """
-            ).fetchall()
+        recipes = get_recipes(get_db(), ingredient)
         return render_template("index.html", recipes=recipes, ingredient=ingredient)
 
     @app.route("/registro", methods=["GET", "POST"])
     def register():
         if request.method == "POST":
-            username = request.form.get("username", "").strip()
+            username, validation_error = validate_user_form(
+                request.form.get("username", ""),
+                request.form.get("password", ""),
+            )
             password = request.form.get("password", "")
-            if len(username) < 3 or len(username) > 40:
-                flash("El usuario debe tener entre 3 y 40 caracteres.", "error")
-            elif len(password) < 8:
-                flash("La contraseña debe tener al menos 8 caracteres.", "error")
-            elif len(password) > 128:
-                flash("La contraseña no puede tener más de 128 caracteres.", "error")
+            if validation_error:
+                flash(validation_error, "error")
             else:
-                db = get_db()
-                try:
-                    cursor = db.execute(
-                        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                        (username, generate_password_hash(password)),
-                    )
-                    db.commit()
-                except sqlite3.IntegrityError:
+                user_id = create_user(get_db(), username, password)
+                if user_id is None:
                     flash("Ese nombre de usuario ya está en uso.", "error")
                 else:
                     session.clear()
-                    session["user_id"] = cursor.lastrowid
+                    session["user_id"] = user_id
                     session["username"] = username
                     flash("¡Cuenta creada! Ya puedes compartir tus recetas.", "success")
                     return redirect(url_for("index"))
@@ -159,11 +115,8 @@ def create_app(test_config=None):
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            user = get_db().execute(
-                "SELECT id, username, password_hash FROM users WHERE username = ?",
-                (username,),
-            ).fetchone()
-            if user is None or not check_password_hash(user["password_hash"], password):
+            user = authenticate_user(get_db(), username, password)
+            if user is None:
                 flash("Usuario o contraseña incorrectos.", "error")
             else:
                 session.clear()
@@ -186,66 +139,41 @@ def create_app(test_config=None):
     @login_required
     def new_recipe():
         if request.method == "POST":
-            title = request.form.get("title", "").strip()
-            description = request.form.get("description", "").strip()
-            instructions = request.form.get("instructions", "").strip()
-            ingredients = [
-                line.strip()
-                for line in request.form.get("ingredients", "").splitlines()
-                if line.strip()
-            ]
-            if (
-                not title
-                or len(title) > 500
-                or not description
-                or not instructions
-                or not ingredients
-            ):
-                flash("Completa todos los campos e incluye al menos un ingrediente.", "error")
+            title, description, instructions, ingredients, validation_error = (
+                validate_recipe_form(
+                    request.form.get("title", ""),
+                    request.form.get("description", ""),
+                    request.form.get("instructions", ""),
+                    request.form.get("ingredients", ""),
+                )
+            )
+            if validation_error:
+                flash(validation_error, "error")
             else:
-                db = get_db()
-                cursor = db.execute(
-                    """
-                    INSERT INTO recipes (user_id, title, description, instructions)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (session["user_id"], title, description, instructions),
+                recipe_id = create_recipe(
+                    get_db(),
+                    session["user_id"],
+                    title,
+                    description,
+                    instructions,
+                    ingredients,
                 )
-                db.executemany(
-                    "INSERT INTO ingredients (recipe_id, name) VALUES (?, ?)",
-                    [(cursor.lastrowid, name) for name in ingredients],
-                )
-                db.commit()
                 flash("Tu receta ya está publicada.", "success")
-                return redirect(url_for("recipe_detail", recipe_id=cursor.lastrowid))
+                return redirect(url_for("recipe_detail", recipe_id=recipe_id))
         return render_template("recipe_form.html")
 
     @app.get("/recetas/<int:recipe_id>")
     def recipe_detail(recipe_id):
-        recipe = get_db().execute(
-            """
-            SELECT recipes.*, users.username
-            FROM recipes JOIN users ON users.id = recipes.user_id
-            WHERE recipes.id = ?
-            """,
-            (recipe_id,),
-        ).fetchone()
+        db = get_db()
+        recipe = get_recipe(db, recipe_id)
         if recipe is None:
             abort(404)
-        ingredients = get_db().execute(
-            "SELECT name FROM ingredients WHERE recipe_id = ? ORDER BY id",
-            (recipe_id,),
-        ).fetchall()
+        ingredients = get_recipe_ingredients(db, recipe_id)
         return render_template(
             "recipe_detail.html", recipe=recipe, ingredients=ingredients
         )
 
     return app
-
-
-def escape_like(value):
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
 
 app = create_app()
 
