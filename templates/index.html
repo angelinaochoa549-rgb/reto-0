@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Recetas que reúnen{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow"><span class="eyebrow-line"></span> BUENO, SIMPLE, HECHO EN CASA</span>
+    <h1>Recetas que<br><em>reúnen.</em></h1>
+    <p>Tu próximo plato favorito está a un ingrediente de distancia.</p>
+    <form class="search-form" action="{{ url_for('index') }}" method="get" role="search">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <label class="sr-only" for="ingredient-search">Buscar por ingrediente</label>
+      <input id="ingredient-search" type="search" name="ingrediente" placeholder="¿Qué tienes en la nevera?" value="{{ ingredient }}">
+      <button type="submit">Buscar <span aria-hidden="true">→</span></button>
+    </form>
+    {% if ingredient %}
+      <a class="clear-search" href="{{ url_for('index') }}">Quitar filtro ×</a>
+    {% endif %}
+  </div>
+  <div class="hero-art" aria-label="Ilustración de una mesa con ingredientes frescos">
+    <div class="art-sun"></div>
+    <div class="art-circle"><span>comer<br>rico, vivir<br><em>despacio</em></span></div>
+    <span class="art-leaf leaf-one">❋</span>
+    <span class="art-leaf leaf-two">✿</span>
+    <div class="art-bowl"><span>✿</span></div>
+    <div class="art-tomato"></div>
+    <div class="art-lemon"></div>
+    <span class="art-sprig">⌁</span>
+  </div>
+</section>
+
+<section class="recipe-section">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow"><span class="eyebrow-line"></span> DE NUESTRA COCINA</span>
+      <h2>{% if ingredient %}Con {{ ingredient }}{% else %}Ideas para hoy{% endif %}</h2>
+    </div>
+    <span class="recipe-count">{{ recipes|length }} receta{% if recipes|length != 1 %}s{% endif %}</span>
+  </div>
+  {% if recipes %}
+    <div class="recipe-grid">
+      {% for recipe in recipes %}
+        <a class="recipe-card" href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}">
+          <div class="card-art card-art-{{ loop.index0 % 4 }}">
+            <span class="card-number">{{ "%02d"|format(loop.index) }}</span>
+            <span class="card-deco">{% if loop.index0 % 4 == 0 %}◉{% elif loop.index0 % 4 == 1 %}✿{% elif loop.index0 % 4 == 2 %}◒{% else %}❋{% endif %}</span>
+            <span class="card-label">HECHO EN CASA</span>
+          </div>
+          <div class="card-content">
+            <span class="card-author">POR {{ recipe.username|upper }}</span>
+            <h3>{{ recipe.title }}</h3>
+            <p>{{ recipe.description }}</p>
+            <span class="card-arrow">Ver receta <span aria-hidden="true">↗</span></span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <span class="empty-icon">✳</span>
+      <h3>{% if ingredient %}Todavía no hay recetas con ese ingrediente.{% else %}La mesa está lista.{% endif %}</h3>
+      <p>{% if ingredient %}Prueba con otro ingrediente o comparte una receta que lo use.{% else %}Sé la primera persona en compartir algo rico.{% endif %}</p>
+      {% if session.get('user_id') %}
+        <a class="button button-dark" href="{{ url_for('new_recipe') }}">Compartir una receta <span>→</span></a>
+      {% else %}
+        <a class="button button-dark" href="{{ url_for('register') }}">Crear una cuenta <span>→</span></a>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

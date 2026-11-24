@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }}{% endblock %}
+{% block content %}
+<article class="detail-page">
+  <a class="back-link" href="{{ url_for('index') }}">← Volver a recetas</a>
+  <div class="detail-hero">
+    <div class="detail-art"><span class="detail-art-symbol">✿</span><span class="card-label">HECHO EN CASA</span></div>
+    <div class="detail-heading">
+      <span class="eyebrow"><span class="eyebrow-line"></span> UNA RECETA DE {{ recipe.username|upper }}</span>
+      <h1>{{ recipe.title }}</h1>
+      <p>{{ recipe.description }}</p>
+    </div>
+  </div>
+  <div class="detail-columns">
+    <section class="ingredients-panel">
+      <span class="eyebrow"><span class="eyebrow-line"></span> LO QUE NECESITAS</span>
+      <h2>Ingredientes</h2>
+      <ul class="ingredient-list">
+        {% for ingredient in ingredients %}<li><span class="ingredient-check">✓</span>{{ ingredient.name }}</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="instructions-panel">
+      <span class="eyebrow"><span class="eyebrow-line"></span> PASO A PASO</span>
+      <h2>Preparación</h2>
+      <div class="instructions">{{ recipe.instructions }}</div>
+    </section>
+  </div>
+</article>
+{% endblock %}

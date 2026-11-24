@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Compartir receta{% endblock %}
+{% block content %}
+<section class="form-page">
+  <a class="back-link" href="{{ url_for('index') }}">← Volver a recetas</a>
+  <span class="eyebrow"><span class="eyebrow-line"></span> ALGO BUENO SE COCINA</span>
+  <h1>Comparte tu<br><em>receta.</em></h1>
+  <p class="form-lead">Cada receta tiene una historia. Cuéntanos la tuya.</p>
+  <form class="form-stack recipe-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="title">Nombre de la receta</label>
+    <input id="title" name="title" maxlength="120" required placeholder="Ej. Pasta al limón">
+    <label for="description">Una breve descripción</label>
+    <input id="description" name="description" maxlength="240" required placeholder="¿Qué la hace especial?">
+    <label for="ingredients">Ingredientes <span class="label-note">uno por línea</span></label>
+    <textarea id="ingredients" name="ingredients" rows="6" required placeholder="200 g de pasta&#10;1 limón&#10;Aceite de oliva"></textarea>
+    <label for="instructions">Preparación</label>
+    <textarea id="instructions" name="instructions" rows="7" required placeholder="Cuéntanos cómo prepararla, paso a paso..."></textarea>
+    <button class="button button-dark button-wide" type="submit">Publicar receta <span>→</span></button>
+  </form>
+</section>
+{% endblock %}
